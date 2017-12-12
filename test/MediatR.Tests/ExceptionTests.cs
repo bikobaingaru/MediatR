@@ -1,3 +1,5 @@
+using System.Threading;
+
 namespace MediatR.Tests
 {
     using System;
@@ -50,17 +52,17 @@ namespace MediatR.Tests
         {
         }
 
-        public class NullPingHandler : IAsyncRequestHandler<NullPing, Pong>
+        public class NullPingHandler : IRequestHandler<NullPing, Pong>
         {
-            public Task<Pong> Handle(NullPing message)
+            public Task<Pong> Handle(NullPing request, CancellationToken cancellationToken)
             {
                 return Task.FromResult(new Pong());
             }
         }
 
-        public class VoidNullPingHandler : IAsyncRequestHandler<VoidNullPing>
+        public class VoidNullPingHandler : IRequestHandler<VoidNullPing>
         {
-            public Task Handle(VoidNullPing message)
+            public Task Handle(VoidNullPing message, CancellationToken cancellationToken)
             {
                 return Task.FromResult(0);
             }

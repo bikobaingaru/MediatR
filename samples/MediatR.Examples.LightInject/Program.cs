@@ -1,4 +1,7 @@
 using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
 using LightInject;
@@ -10,30 +13,26 @@ namespace MediatR.Examples.LightInject
     {
         static Task Main(string[] args)
         {
-            var mediator = BuildMediator();
-            
-            return Runner.Run(mediator, Console.Out, "LightInject");
+            var writer = new WrappingWriter(Console.Out);
+            var mediator = BuildMediator(writer);
+
+            return Runner.Run(mediator, writer, "LightInject");
         }
 
-        private static IMediator BuildMediator()
+        private static IMediator BuildMediator(WrappingWriter writer)
         {
             var serviceContainer = new ServiceContainer();
             serviceContainer.Register<IMediator, Mediator>();
             serviceContainer.RegisterAssembly(typeof(IMediator).GetTypeInfo().Assembly, (serviceType, implementingType) => !serviceType.GetTypeInfo().IsClass);
-            serviceContainer.RegisterInstance(Console.Out);
+            serviceContainer.RegisterInstance<TextWriter>(writer);
 
             serviceContainer.RegisterAssembly(typeof(Ping).GetTypeInfo().Assembly, (serviceType, implementingType) =>
-            {
-                return serviceType.IsConstructedGenericType &&
-                        (
-                            serviceType.GetGenericTypeDefinition() == typeof(IRequestHandler<,>) ||
-                            serviceType.GetGenericTypeDefinition() == typeof(IAsyncRequestHandler<,>) ||
-                            serviceType.GetGenericTypeDefinition() == typeof(ICancellableAsyncRequestHandler<,>) ||
-                            serviceType.GetGenericTypeDefinition() == typeof(INotificationHandler<>) ||
-                            serviceType.GetGenericTypeDefinition() == typeof(IAsyncNotificationHandler<>) ||
-                            serviceType.GetGenericTypeDefinition() == typeof(ICancellableAsyncNotificationHandler<>
-                        ));
-            });
+                serviceType.IsConstructedGenericType &&
+                (
+                    serviceType.GetGenericTypeDefinition() == typeof(IRequestHandler<,>) ||
+                    serviceType.GetGenericTypeDefinition() == typeof(IRequestHandler<>) ||
+                    serviceType.GetGenericTypeDefinition() == typeof(INotificationHandler<>)
+                ));
             
             //Pipeline
             //TODO: can't get the order right..
@@ -44,8 +43,8 @@ namespace MediatR.Examples.LightInject
             serviceContainer.Register(typeof(IRequestPostProcessor<,>), typeof(GenericRequestPostProcessor<,>));
 
 
-            serviceContainer.Register<SingleInstanceFactory>(fac => t => fac.GetInstance(t));
-            serviceContainer.Register<MultiInstanceFactory>(fac => t => fac.GetAllInstances(t));
+            serviceContainer.Register<SingleInstanceFactory>(fac => fac.GetInstance);
+            serviceContainer.Register<MultiInstanceFactory>(fac => fac.GetAllInstances);
             return serviceContainer.GetInstance<IMediator>(); 
         }
     }

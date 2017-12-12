@@ -12,12 +12,13 @@ namespace MediatR.Examples.StructureMap
     {
         static Task Main(string[] args)
         {
-            var mediator = BuildMediator();
+            var writer = new WrappingWriter(Console.Out);
+            var mediator = BuildMediator(writer);
 
-            return Runner.Run(mediator, Console.Out, "StructureMap");
+            return Runner.Run(mediator, writer, "StructureMap");
         }
 
-        private static IMediator BuildMediator()
+        private static IMediator BuildMediator(WrappingWriter writer)
         {
             var container = new Container(cfg =>
             {
@@ -25,11 +26,8 @@ namespace MediatR.Examples.StructureMap
                 {
                     scanner.AssemblyContainingType<Ping>();
                     scanner.ConnectImplementationsToTypesClosing(typeof(IRequestHandler<,>));
-                    scanner.ConnectImplementationsToTypesClosing(typeof(IAsyncRequestHandler<,>));
-                    scanner.ConnectImplementationsToTypesClosing(typeof(ICancellableAsyncRequestHandler<,>));
+                    scanner.ConnectImplementationsToTypesClosing(typeof(IRequestHandler<>));
                     scanner.ConnectImplementationsToTypesClosing(typeof(INotificationHandler<>));
-                    scanner.ConnectImplementationsToTypesClosing(typeof(IAsyncNotificationHandler<>));
-                    scanner.ConnectImplementationsToTypesClosing(typeof(ICancellableAsyncNotificationHandler<>));
                 });
 
                 //Pipeline
@@ -42,9 +40,9 @@ namespace MediatR.Examples.StructureMap
                 // This is the default but let's be explicit. At most we should be container scoped.
                 cfg.For<IMediator>().LifecycleIs<TransientLifecycle>().Use<Mediator>();
 
-                cfg.For<SingleInstanceFactory>().Use<SingleInstanceFactory>(ctx => t => ctx.GetInstance(t));
-                cfg.For<MultiInstanceFactory>().Use<MultiInstanceFactory>(ctx => t => ctx.GetAllInstances(t));
-                cfg.For<TextWriter>().Use(Console.Out);
+                cfg.For<SingleInstanceFactory>().Use<SingleInstanceFactory>(ctx => ctx.GetInstance);
+                cfg.For<MultiInstanceFactory>().Use<MultiInstanceFactory>(ctx => ctx.GetAllInstances);
+                cfg.For<TextWriter>().Use(writer);
             });
 
 

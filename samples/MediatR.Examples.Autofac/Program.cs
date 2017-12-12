@@ -13,12 +13,13 @@ namespace MediatR.Examples.Autofac
     {
         public static Task Main(string[] args)
         {
-            var mediator = BuildMediator();
+            var writer = new WrappingWriter(Console.Out);
+            var mediator = BuildMediator(writer);
 
-            return Runner.Run(mediator, Console.Out, "Autofac");
+            return Runner.Run(mediator, writer, "Autofac");
         }
 
-        private static IMediator BuildMediator()
+        private static IMediator BuildMediator(WrappingWriter writer)
         {
             var builder = new ContainerBuilder();
             builder.RegisterAssemblyTypes(typeof(IMediator).GetTypeInfo().Assembly).AsImplementedInterfaces();
@@ -26,11 +27,8 @@ namespace MediatR.Examples.Autofac
             var mediatrOpenTypes = new[]
             {
                 typeof(IRequestHandler<,>),
-                typeof(IAsyncRequestHandler<,>),
-                typeof(ICancellableAsyncRequestHandler<,>),
+                typeof(IRequestHandler<>),
                 typeof(INotificationHandler<>),
-                typeof(IAsyncNotificationHandler<>),
-                typeof(ICancellableAsyncNotificationHandler<>)
             };
 
             foreach (var mediatrOpenType in mediatrOpenTypes)
@@ -41,23 +39,19 @@ namespace MediatR.Examples.Autofac
                     .AsImplementedInterfaces();
             }
 
-            builder.RegisterInstance(Console.Out).As<TextWriter>();
+            builder.RegisterInstance(writer).As<TextWriter>();
 
             // It appears Autofac returns the last registered types first
-            builder.RegisterGeneric(typeof(GenericPipelineBehavior<,>)).As(typeof(IPipelineBehavior<,>));
             builder.RegisterGeneric(typeof(RequestPostProcessorBehavior<,>)).As(typeof(IPipelineBehavior<,>));
             builder.RegisterGeneric(typeof(RequestPreProcessorBehavior<,>)).As(typeof(IPipelineBehavior<,>));
             builder.RegisterGeneric(typeof(GenericRequestPreProcessor<>)).As(typeof(IRequestPreProcessor<>));
             builder.RegisterGeneric(typeof(GenericRequestPostProcessor<,>)).As(typeof(IRequestPostProcessor<,>));
+            builder.RegisterGeneric(typeof(GenericPipelineBehavior<,>)).As(typeof(IPipelineBehavior<,>));
 
             builder.Register<SingleInstanceFactory>(ctx =>
             {
                 var c = ctx.Resolve<IComponentContext>();
-                return t =>
-                {
-                    object o;
-                    return c.TryResolve(t, out o) ? o : null;
-                };
+                return t => c.Resolve(t);
             });
 
             builder.Register<MultiInstanceFactory>(ctx =>

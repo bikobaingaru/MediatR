@@ -14,9 +14,9 @@ namespace MediatR
     {
         private readonly SingleInstanceFactory _singleInstanceFactory;
         private readonly MultiInstanceFactory _multiInstanceFactory;
-        private static readonly ConcurrentDictionary<Type, RequestHandler> _voidRequestHandlers = new ConcurrentDictionary<Type, RequestHandler>();
+        private static readonly ConcurrentDictionary<Type, RequestHandlerWrapper> _voidRequestHandlers = new ConcurrentDictionary<Type, RequestHandlerWrapper>();
         private static readonly ConcurrentDictionary<Type, object> _requestHandlers = new ConcurrentDictionary<Type, object>();
-        private static readonly ConcurrentDictionary<Type, NotificationHandler> _notificationHandlers = new ConcurrentDictionary<Type, NotificationHandler>();
+        private static readonly ConcurrentDictionary<Type, NotificationHandlerWrapper> _notificationHandlers = new ConcurrentDictionary<Type, NotificationHandlerWrapper>();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Mediator"/> class.
@@ -38,8 +38,8 @@ namespace MediatR
 
             var requestType = request.GetType();
 
-            var handler = (RequestHandler<TResponse>)_requestHandlers.GetOrAdd(requestType,
-                t => Activator.CreateInstance(typeof(RequestHandlerImpl<,>).MakeGenericType(requestType, typeof(TResponse))));
+            var handler = (RequestHandlerWrapper<TResponse>)_requestHandlers.GetOrAdd(requestType,
+                t => Activator.CreateInstance(typeof(RequestHandlerWrapperImpl<,>).MakeGenericType(requestType, typeof(TResponse))));
 
             return handler.Handle(request, cancellationToken, _singleInstanceFactory, _multiInstanceFactory);
         }
@@ -54,7 +54,7 @@ namespace MediatR
             var requestType = request.GetType();
 
             var handler = _voidRequestHandlers.GetOrAdd(requestType,
-                t => (RequestHandler) Activator.CreateInstance(typeof(RequestHandlerImpl<>).MakeGenericType(requestType)));
+                t => (RequestHandlerWrapper) Activator.CreateInstance(typeof(RequestHandlerWrapperImpl<>).MakeGenericType(requestType)));
 
             return handler.Handle(request, cancellationToken, _singleInstanceFactory, _multiInstanceFactory);
         }
@@ -69,7 +69,7 @@ namespace MediatR
 
             var notificationType = notification.GetType();
             var handler = _notificationHandlers.GetOrAdd(notificationType,
-                t => (NotificationHandler)Activator.CreateInstance(typeof(NotificationHandlerImpl<>).MakeGenericType(notificationType)));
+                t => (NotificationHandlerWrapper)Activator.CreateInstance(typeof(NotificationHandlerWrapperImpl<>).MakeGenericType(notificationType)));
 
             return handler.Handle(notification, cancellationToken, _multiInstanceFactory, PublishCore);
         }

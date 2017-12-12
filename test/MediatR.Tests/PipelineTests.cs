@@ -1,4 +1,6 @@
-﻿namespace MediatR.Tests
+using System.Threading;
+
+namespace MediatR.Tests
 {
     using System;
     using System.Collections.Generic;
@@ -29,7 +31,7 @@
             public string Message { get; set; }
         }
 
-        public class PingHandler : IAsyncRequestHandler<Ping, Pong>
+        public class PingHandler : IRequestHandler<Ping, Pong>
         {
             private readonly Logger _output;
 
@@ -37,14 +39,14 @@
             {
                 _output = output;
             }
-            public Task<Pong> Handle(Ping message)
+            public Task<Pong> Handle(Ping request, CancellationToken cancellationToken)
             {
                 _output.Messages.Add("Handler");
-                return Task.FromResult(new Pong { Message = message.Message + " Pong" });
+                return Task.FromResult(new Pong { Message = request.Message + " Pong" });
             }
         }
 
-        public class ZingHandler : IAsyncRequestHandler<Zing, Zong>
+        public class ZingHandler : IRequestHandler<Zing, Zong>
         {
             private readonly Logger _output;
 
@@ -52,10 +54,10 @@
             {
                 _output = output;
             }
-            public Task<Zong> Handle(Zing message)
+            public Task<Zong> Handle(Zing request, CancellationToken cancellationToken)
             {
                 _output.Messages.Add("Handler");
-                return Task.FromResult(new Zong { Message = message.Message + " Zong" });
+                return Task.FromResult(new Zong { Message = request.Message + " Zong" });
             }
         }
 
@@ -68,7 +70,7 @@
                 _output = output;
             }
 
-            public async Task<Pong> Handle(Ping request, RequestHandlerDelegate<Pong> next)
+            public async Task<Pong> Handle(Ping request, CancellationToken cancellationToken, RequestHandlerDelegate<Pong> next)
             {
                 _output.Messages.Add("Outer before");
                 var response = await next();
@@ -87,7 +89,7 @@
                 _output = output;
             }
 
-            public async Task<Pong> Handle(Ping request, RequestHandlerDelegate<Pong> next)
+            public async Task<Pong> Handle(Ping request, CancellationToken cancellationToken, RequestHandlerDelegate<Pong> next)
             {
                 _output.Messages.Add("Inner before");
                 var response = await next();
@@ -106,7 +108,7 @@
                 _output = output;
             }
 
-            public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next)
+            public async Task<TResponse> Handle(TRequest request, CancellationToken cancellationToken, RequestHandlerDelegate<TResponse> next)
             {
                 _output.Messages.Add("Inner generic before");
                 var response = await next();
@@ -125,7 +127,7 @@
                 _output = output;
             }
 
-            public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next)
+            public async Task<TResponse> Handle(TRequest request, CancellationToken cancellationToken, RequestHandlerDelegate<TResponse> next)
             {
                 _output.Messages.Add("Outer generic before");
                 var response = await next();
@@ -146,7 +148,7 @@
                 _output = output;
             }
 
-            public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next)
+            public async Task<TResponse> Handle(TRequest request, CancellationToken cancellationToken, RequestHandlerDelegate<TResponse> next)
             {
                 _output.Messages.Add("Constrained before");
                 var response = await next();
@@ -165,7 +167,7 @@
                 _output = output;
             }
 
-            public async Task<Pong> Handle(Ping request, RequestHandlerDelegate<Pong> next)
+            public async Task<Pong> Handle(Ping request, CancellationToken cancellationToken, RequestHandlerDelegate<Pong> next)
             {
                 _output.Messages.Add("Concrete before");
                 var response = await next();
@@ -188,10 +190,10 @@
             {
                 cfg.Scan(scanner =>
                 {
-                    scanner.AssemblyContainingType(typeof(AsyncPublishTests));
+                    scanner.AssemblyContainingType(typeof(PublishTests));
                     scanner.IncludeNamespaceContainingType<Ping>();
                     scanner.WithDefaultConventions();
-                    scanner.AddAllTypesOf(typeof(IAsyncRequestHandler<,>));
+                    scanner.AddAllTypesOf(typeof(IRequestHandler<,>));
                 });
                 cfg.For<Logger>().Singleton().Use(output);
                 cfg.For<IPipelineBehavior<Ping, Pong>>().Add<OuterBehavior>();
@@ -225,10 +227,10 @@
             {
                 cfg.Scan(scanner =>
                 {
-                    scanner.AssemblyContainingType(typeof(AsyncPublishTests));
+                    scanner.AssemblyContainingType(typeof(PublishTests));
                     scanner.IncludeNamespaceContainingType<Ping>();
                     scanner.WithDefaultConventions();
-                    scanner.AddAllTypesOf(typeof(IAsyncRequestHandler<,>));
+                    scanner.AddAllTypesOf(typeof(IRequestHandler<,>));
                 });
                 cfg.For<Logger>().Singleton().Use(output);
 
@@ -266,10 +268,10 @@
             {
                 cfg.Scan(scanner =>
                 {
-                    scanner.AssemblyContainingType(typeof(AsyncPublishTests));
+                    scanner.AssemblyContainingType(typeof(PublishTests));
                     scanner.IncludeNamespaceContainingType<Ping>();
                     scanner.WithDefaultConventions();
-                    scanner.AddAllTypesOf(typeof(IAsyncRequestHandler<,>));
+                    scanner.AddAllTypesOf(typeof(IRequestHandler<,>));
                 });
                 cfg.For<Logger>().Singleton().Use(output);
 
@@ -325,10 +327,10 @@
             {
                 cfg.Scan(scanner =>
                 {
-                    scanner.AssemblyContainingType(typeof(AsyncPublishTests));
+                    scanner.AssemblyContainingType(typeof(PublishTests));
                     scanner.IncludeNamespaceContainingType<Ping>();
                     scanner.WithDefaultConventions();
-                    scanner.AddAllTypesOf(typeof(IAsyncRequestHandler<,>));
+                    scanner.AddAllTypesOf(typeof(IRequestHandler<,>));
                 });
                 cfg.For<Logger>().Singleton().Use(output);
 

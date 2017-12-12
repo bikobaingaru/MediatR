@@ -1,8 +1,11 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
-using Microsoft.Practices.Unity;
+using MediatR.Pipeline;
+using Unity;
+using Unity.Lifetime;
 
 namespace MediatR.Examples.Unity
 {
@@ -10,18 +13,26 @@ namespace MediatR.Examples.Unity
     {
         private static Task Main(string[] args)
         {
-            var mediator = BuildMediator();
+            var writer = new WrappingWriter(Console.Out);
+            var mediator = BuildMediator(writer);
 
-            return Runner.Run(mediator, Console.Out, "Unity");
+            return Runner.Run(mediator, writer, "Unity");
         }
 
-        private static IMediator BuildMediator()
+        private static IMediator BuildMediator(WrappingWriter writer)
         {
             var container = new UnityContainer();
 
-            container.RegisterInstance(Console.Out)
+            container.RegisterInstance<TextWriter>(writer)
                      .RegisterMediator(new HierarchicalLifetimeManager())
                      .RegisterMediatorHandlers(Assembly.GetAssembly(typeof(Ping)));
+
+            container.RegisterType(typeof(IPipelineBehavior<,>), typeof(RequestPreProcessorBehavior<,>), "RequestPreProcessorBehavior");
+            container.RegisterType(typeof(IPipelineBehavior<,>), typeof(RequestPostProcessorBehavior<,>), "RequestPostProcessorBehavior");
+            container.RegisterType(typeof(IPipelineBehavior<,>), typeof(GenericPipelineBehavior<,>), "GenericPipelineBehavior");
+            container.RegisterType(typeof(IRequestPreProcessor<>), typeof(GenericRequestPreProcessor<>), "GenericRequestPreProcessor");
+            container.RegisterType(typeof(IRequestPostProcessor<,>), typeof(GenericRequestPostProcessor<,>), "GenericRequestPostProcessor");
+
 
             return container.Resolve<IMediator>();
         }
@@ -34,17 +45,14 @@ namespace MediatR.Examples.Unity
         {
             return container.RegisterType<IMediator, Mediator>(lifetimeManager)
                             .RegisterInstance<SingleInstanceFactory>(t => container.IsRegistered(t) ? container.Resolve(t) : null)
-                            .RegisterInstance<MultiInstanceFactory>(t => container.IsRegistered(t) ? container.ResolveAll(t) : new object[0]);
+                            .RegisterInstance<MultiInstanceFactory>(t => container.ResolveAll(t));
         }
 
         public static IUnityContainer RegisterMediatorHandlers(this IUnityContainer container, Assembly assembly)
         {
             return container.RegisterTypesImplementingType(assembly, typeof(IRequestHandler<>))
                             .RegisterTypesImplementingType(assembly, typeof(IRequestHandler<,>))
-                            .RegisterTypesImplementingType(assembly, typeof(IAsyncRequestHandler<>))
-                            .RegisterTypesImplementingType(assembly, typeof(IAsyncRequestHandler<,>))
-                            .RegisterTypesImplementingType(assembly, typeof(INotificationHandler<>))
-                            .RegisterTypesImplementingType(assembly, typeof(IAsyncNotificationHandler<>));
+                            .RegisterNamedTypesImplementingType(assembly, typeof(INotificationHandler<>));
         }
 
         /// <summary>
@@ -57,6 +65,21 @@ namespace MediatR.Examples.Unity
                 var interfaces = implementation.GetInterfaces();
                 foreach (var @interface in interfaces)
                     container.RegisterType(@interface, implementation);
+            }
+
+            return container;
+        }
+
+        /// <summary>
+        ///     Register all implementations of a given type for provided assembly.
+        /// </summary>
+        public static IUnityContainer RegisterNamedTypesImplementingType(this IUnityContainer container, Assembly assembly, Type type)
+        {
+            foreach (var implementation in assembly.GetTypes().Where(t => t.GetInterfaces().Any(implementation => IsSubclassOfRawGeneric(type, implementation))))
+            {
+                var interfaces = implementation.GetInterfaces();
+                foreach (var @interface in interfaces)
+                    container.RegisterType(@interface, implementation, implementation.FullName);
             }
 
             return container;
