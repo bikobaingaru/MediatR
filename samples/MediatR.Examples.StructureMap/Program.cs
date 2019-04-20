@@ -26,7 +26,6 @@ namespace MediatR.Examples.StructureMap
                 {
                     scanner.AssemblyContainingType<Ping>();
                     scanner.ConnectImplementationsToTypesClosing(typeof(IRequestHandler<,>));
-                    scanner.ConnectImplementationsToTypesClosing(typeof(IRequestHandler<>));
                     scanner.ConnectImplementationsToTypesClosing(typeof(INotificationHandler<>));
                 });
 
@@ -36,12 +35,15 @@ namespace MediatR.Examples.StructureMap
                 cfg.For(typeof(IPipelineBehavior<,>)).Add(typeof(GenericPipelineBehavior<,>));
                 cfg.For(typeof(IRequestPreProcessor<>)).Add(typeof(GenericRequestPreProcessor<>));
                 cfg.For(typeof(IRequestPostProcessor<,>)).Add(typeof(GenericRequestPostProcessor<,>));
+                cfg.For(typeof(IRequestPostProcessor<,>)).Add(typeof(ConstrainedRequestPostProcessor<,>));
+
+                //Constrained notification handlers
+                cfg.For(typeof(INotificationHandler<>)).Add(typeof(ConstrainedPingedHandler<>));
 
                 // This is the default but let's be explicit. At most we should be container scoped.
                 cfg.For<IMediator>().LifecycleIs<TransientLifecycle>().Use<Mediator>();
 
-                cfg.For<SingleInstanceFactory>().Use<SingleInstanceFactory>(ctx => ctx.GetInstance);
-                cfg.For<MultiInstanceFactory>().Use<MultiInstanceFactory>(ctx => ctx.GetAllInstances);
+                cfg.For<ServiceFactory>().Use<ServiceFactory>(ctx => ctx.GetInstance);
                 cfg.For<TextWriter>().Use(writer);
             });
 
